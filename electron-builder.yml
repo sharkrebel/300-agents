@@ -1,0 +1,23 @@
+appId: com.agents300.app
+productName: 300-Agents
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+  - '**/node_modules/node-pty/**'
+linux:
+  target:
+    - AppImage
+  category: Development
+  icon: build/icon.png
+appImage:
+  artifactName: 300-Agents-${version}.AppImage
+# node-pty is pre-rebuilt against the pinned Electron version's headers
+# (see docs/QA-AUDIT.md); electron-builder must not rebuild it again.
+npmRebuild: false
