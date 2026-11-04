@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { IPC, type AppSettings, type BacklogItem, type RestoreState } from '../shared/types'
@@ -110,14 +110,20 @@ function registerIpc(): void {
 }
 
 function createWindow(): void {
+  const saved = getStores().settings.get().windowBounds
+  const iconPath = join(app.getAppPath(), 'build', 'icon.png')
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: saved?.width ?? 1440,
+    height: saved?.height ?? 900,
+    x: saved?.x,
+    y: saved?.y,
     minWidth: 1024,
     minHeight: 640,
     show: false,
+    autoHideMenuBar: true,
     backgroundColor: '#0a0b0e',
     title: '300-Agents',
+    ...(existsSync(iconPath) ? { icon: iconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -125,6 +131,18 @@ function createWindow(): void {
       sandbox: true
     }
   })
+  let saveTimer: NodeJS.Timeout | null = null
+  const persistBounds = (): void => {
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        getStores().settings.update({ windowBounds: mainWindow.getBounds() })
+      }
+    }, 400)
+  }
+  mainWindow.on('resize', persistBounds)
+  mainWindow.on('move', persistBounds)
   mainWindow.on('ready-to-show', () => mainWindow?.show())
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) shell.openExternal(url)
@@ -138,6 +156,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
   registerIpc()
   createWindow()
   app.on('activate', () => {

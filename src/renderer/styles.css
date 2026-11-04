@@ -37,6 +37,46 @@ body {
   background: rgba(240, 168, 50, 0.35);
 }
 
+:focus-visible {
+  outline: 2px solid rgba(240, 168, 50, 0.65);
+  outline-offset: 1px;
+}
+
+.glow-ring {
+  background:
+    radial-gradient(closest-side, rgba(240, 168, 50, 0.16), transparent 70%),
+    var(--color-panel2);
+  border: 1px solid rgba(240, 168, 50, 0.25);
+  box-shadow: 0 0 44px rgba(240, 168, 50, 0.10), inset 0 0 22px rgba(240, 168, 50, 0.05);
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(240%);
+  }
+}
+.shimmer-bar {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(240, 168, 50, 0.55), transparent);
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.stage-glow {
+  background:
+    radial-gradient(720px 340px at 50% -80px, rgba(240, 168, 50, 0.07), transparent 65%),
+    var(--color-ink);
+}
+
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;

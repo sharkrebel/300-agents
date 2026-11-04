@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Code2, FolderOpen, Sparkles, TerminalSquare } from 'lucide-react'
 import type { CliKind, DetectedCli, UserMode } from '../../shared/types'
 import { useStore, persistState } from '../store'
+import logoUrl from '../assets/logo.svg'
 
 const DEV_TAGS = ['Web developer', 'Mobile developer', 'Data / ML', 'DevOps', 'Indie hacker']
 const NONDEV_TAGS = ['Marketing', 'Sales', 'Founder', 'Student', 'Writer', 'Admin / HR']
@@ -48,8 +49,11 @@ export default function Onboarding(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full items-center justify-center bg-ink px-6">
+    <div className="stage-glow flex h-full items-center justify-center px-6">
       <div className="rise-in w-full max-w-3xl">
+        <div className="mb-4 flex justify-center">
+          <img src={logoUrl} alt="300-Agents" className="h-14 w-14 rounded-2xl shadow-xl shadow-black/50" />
+        </div>
         <div className="mb-3 flex items-center justify-center gap-2 text-[11px] font-semibold tracking-[0.22em] text-ember">
           <Sparkles size={13} />
           STEP {step + 1} OF 4 · 300-AGENTS

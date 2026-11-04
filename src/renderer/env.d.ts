@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { Agents300Api } from '../preload/index'
 
 declare global {

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useStore, bootstrap } from './store'
 import Onboarding from './components/Onboarding'
 import Shell from './components/Shell'
+import logoUrl from './assets/logo.svg'
 
 export default function App(): React.JSX.Element {
   const ready = useStore((s) => s.ready)
@@ -13,11 +14,13 @@ export default function App(): React.JSX.Element {
 
   if (!ready) {
     return (
-      <div className="flex h-full items-center justify-center bg-ink">
-        <div className="flex items-center gap-3 text-fog">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ember font-mono text-[13px] font-black text-[#1a1206]">300</span>
-          <span className="text-[14px]">Starting 300-Agents…</span>
+      <div className="stage-glow flex h-full flex-col items-center justify-center gap-4">
+        <img src={logoUrl} alt="300-Agents" className="h-16 w-16 rounded-2xl shadow-2xl shadow-black/60" />
+        <div className="text-center">
+          <p className="text-[17px] font-bold tracking-tight text-paper">300-Agents</p>
+          <p className="mt-0.5 text-[12.5px] text-fog">Warming up your command center…</p>
         </div>
+        <div className="shimmer-bar h-1 w-44 rounded-full bg-panel3" />
       </div>
     )
   }

@@ -34,6 +34,22 @@
   folder; they are never transmitted anywhere by the app itself.
 - File writes use tmp-file + rename (atomic) for settings/state/collections.
 
+## P6 polish pass (v0.2.0, 2026-11-04)
+
+- **Icon**: designed as SVG source (`build/icon.svg`) — dark rounded tile, amber terminal
+  prompt glyph, three agent nodes. Rendered to PNG at 16–1024 px (`build/icons/`) and
+  `build/icon.png` for packaging; the same mark is used in-app (sidebar, splash, onboarding).
+- **Typography**: Inter (UI) and JetBrains Mono (code) are bundled via Fontsource, so the
+  interface renders identically on every machine instead of borrowing system fonts.
+- **Window chrome**: the default Electron menu bar is removed; window size/position persist
+  across launches (`settings.windowBounds`); a branded splash shows while the app boots.
+- **UX upgrades**: per-session header bar on the terminal stage (status dot, CLI chip,
+  working directory, close), live per-agent dots in the status island, project avatar
+  tiles (initials + stable color), CLI-colored session rows, unread-mail badge on the
+  Mail tab, glowing empty states, focus-visible rings and press feedback on primary CTAs.
+- Verified live in the InstaBox sandbox: onboarding, shell, and a real PTY session all
+  render and run with the new icon/fonts/chrome.
+
 ## Known limitations (accepted for v0.1.0)
 
 - Renderer bundle is a single ~1 MB JS chunk (xterm + React). Acceptable for

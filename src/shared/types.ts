@@ -36,6 +36,7 @@ export interface AppSettings {
     openai?: string
     anthropic?: string
   }
+  windowBounds?: { width: number; height: number; x?: number; y?: number }
 }
 
 export interface RestoreState {

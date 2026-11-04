@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bot,
-  FolderGit2,
   GitBranch,
   Inbox,
   ListTodo,
@@ -18,6 +17,26 @@ import type { AgentSession, CliKind, RoleDef } from '../../shared/types'
 import { useStore, persistState, newSessionTitle } from '../store'
 import TerminalView, { killSessionPty } from './TerminalView'
 import { BacklogPanel, GitPanel, MailPanel, PromptsPanel, RolesPanel, SettingsPanel, TodosPanel } from './panels'
+import logoUrl from '../assets/logo.svg'
+
+export const CLI_COLORS: Record<CliKind, string> = {
+  claude: '#d97757',
+  codex: '#58a6ff',
+  antigravity: '#bc8cff',
+  opencode: '#3fb27f',
+  shell: '#9aa3ad'
+}
+
+const PROJECT_COLORS = ['#f0a832', '#58a6ff', '#3fb27f', '#bc8cff', '#e5534b', '#39c5cf']
+export function projectColor(name: string): string {
+  let h = 0
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 997
+  return PROJECT_COLORS[h % PROJECT_COLORS.length]
+}
+export function projectInitials(name: string): string {
+  const parts = name.replace(/[-_]/g, ' ').split(/\s+/).filter(Boolean)
+  return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase()
+}
 
 const CLI_OPTIONS: Array<{ kind: CliKind; label: string }> = [
   { kind: 'claude', label: 'Claude Code' },
@@ -52,8 +71,24 @@ export default function Shell(): React.JSX.Element {
   const settings = useStore((s) => s.settings)
   const [showCliMenu, setShowCliMenu] = useState(false)
   const [showRight, setShowRight] = useState(true)
+  const [unreadMail, setUnreadMail] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    const tick = async (): Promise<void> => {
+      const list = await window.agents300.mail.list()
+      if (alive && list) setUnreadMail(list.filter((m) => !m.read).length)
+    }
+    void tick()
+    const t = setInterval(() => void tick(), 8000)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [])
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
   const projectSessions = useMemo(() => sessions.filter((s) => s.projectId === activeProjectId), [sessions, activeProjectId])
   const runningCount = sessions.filter((s) => s.status === 'running').length
 
@@ -98,11 +133,21 @@ export default function Shell(): React.JSX.Element {
       {/* Top bar */}
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-panel px-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-ember font-mono text-[11px] font-black text-[#1a1206]">300</span>
+          <img src={logoUrl} alt="" className="h-7 w-7 rounded-lg" />
           <span className="text-[14px] font-bold tracking-tight text-paper">300-Agents</span>
         </div>
-        <div className="mx-auto flex items-center gap-2 rounded-full border border-line bg-panel2 py-1 pl-3 pr-2">
-          <span className={`h-2 w-2 rounded-full ${runningCount > 0 ? 'bg-moss pulse-dot' : 'bg-fog/50'}`} />
+        <div className="mx-auto flex items-center gap-2.5 rounded-full border border-line bg-panel2 py-1 pl-3 pr-2">
+          <span className="flex items-center gap-1">
+            {sessions.slice(0, 6).map((s) => (
+              <span
+                key={s.id}
+                title={`${s.title} · ${s.status}`}
+                className={`h-2 w-2 rounded-full ${s.status === 'running' ? 'pulse-dot' : ''}`}
+                style={{ background: s.status === 'running' ? CLI_COLORS[s.cli] : s.status === 'error' ? '#e5534b' : 'rgba(154,163,173,0.4)' }}
+              />
+            ))}
+            {sessions.length === 0 && <span className="h-2 w-2 rounded-full bg-fog/40" />}
+          </span>
           <span className="text-[12px] text-mist">
             {runningCount > 0 ? `${runningCount} agent${runningCount > 1 ? 's' : ''} running` : 'No agents running'}
           </span>
@@ -134,7 +179,12 @@ export default function Shell(): React.JSX.Element {
                 onClick={() => { setActiveProject(p.id); setActiveSession(null); void persistState() }}
                 className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition ${p.id === activeProjectId ? 'bg-panel3 text-paper' : 'text-mist hover:bg-panel2'}`}
               >
-                <FolderGit2 size={15} className={p.id === activeProjectId ? 'text-ember' : 'text-fog'} />
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-[#101216]"
+                  style={{ background: projectColor(p.name) }}
+                >
+                  {projectInitials(p.name)}
+                </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-medium">{p.name}</span>
                   <span className="block truncate font-mono text-[10.5px] text-fog">{p.path}</span>
@@ -182,7 +232,10 @@ export default function Shell(): React.JSX.Element {
                   <span className={`h-2 w-2 shrink-0 rounded-full ${s.status === 'running' ? 'bg-moss pulse-dot' : s.status === 'starting' ? 'bg-ember pulse-dot' : s.status === 'error' ? 'bg-rust' : 'bg-fog/40'}`} />
                   <span className="min-w-0">
                     <span className="block truncate text-[13px] font-medium">{s.title}</span>
-                    <span className="block font-mono text-[10.5px] uppercase tracking-wide text-fog">{s.cli}{s.roleId ? ` · ${s.roleId}` : ''}</span>
+                    <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wide text-fog">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: CLI_COLORS[s.cli] }} />
+                      {s.cli}{s.roleId ? ` · ${s.roleId}` : ''}
+                    </span>
                   </span>
                 </button>
                 <button onClick={() => void closeSession(s)} className="shrink-0 text-fog opacity-0 transition hover:text-rust group-hover:opacity-100" title="Close session">
@@ -197,10 +250,33 @@ export default function Shell(): React.JSX.Element {
         </aside>
 
         {/* Stage */}
-        <main className="relative min-w-0 flex-1 bg-ink">
+        <main className="stage-glow relative flex min-w-0 flex-1 flex-col">
+          {activeSession && (
+            <div className="flex h-10 shrink-0 items-center gap-2.5 border-b border-line bg-panel/70 px-4">
+              <span
+                className={`h-2 w-2 rounded-full ${activeSession.status === 'running' ? 'pulse-dot' : ''}`}
+                style={{ background: activeSession.status === 'running' ? CLI_COLORS[activeSession.cli] : activeSession.status === 'error' ? '#e5534b' : 'rgba(154,163,173,0.45)' }}
+              />
+              <span className="text-[13px] font-semibold text-paper">{activeSession.title}</span>
+              <span
+                className="rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide"
+                style={{ background: `${CLI_COLORS[activeSession.cli]}22`, color: CLI_COLORS[activeSession.cli] }}
+              >
+                {activeSession.cli}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fog" title={activeSession.cwd}>{activeSession.cwd}</span>
+              <span className="text-[11px] capitalize text-fog">{activeSession.status}</span>
+              <button onClick={() => void closeSession(activeSession)} className="rounded-md p-1 text-fog transition hover:bg-panel3 hover:text-rust" title="Close session">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <div className="relative min-h-0 flex-1">
           {!activeProject && (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <TerminalSquare size={34} className="text-ember" />
+              <span className="glow-ring flex h-16 w-16 items-center justify-center rounded-2xl">
+                <TerminalSquare size={30} className="text-ember" />
+              </span>
               <h2 className="font-serif text-[26px] text-paper">Every agent you run, in one window.</h2>
               <p className="max-w-md text-[13.5px] leading-relaxed text-fog">
                 Add a project folder on the left, then start an agent. Claude Code, Codex, Antigravity, OpenCode or a plain shell — as many in parallel as your machine handles.
@@ -212,10 +288,12 @@ export default function Shell(): React.JSX.Element {
           )}
           {activeProject && projectSessions.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <Bot size={34} className="text-ember" />
+              <span className="glow-ring flex h-16 w-16 items-center justify-center rounded-2xl">
+                <Bot size={30} className="text-ember" />
+              </span>
               <h2 className="font-serif text-[26px] text-paper">{activeProject.name} is ready.</h2>
               <p className="max-w-md text-[13.5px] leading-relaxed text-fog">Start an agent session with the + next to AGENTS, or launch a specialist from the Roles tab.</p>
-              <button onClick={() => void startSession(settings?.defaultCli ?? 'shell')} className="mt-1 rounded-full bg-ember px-5 py-2.5 text-[13px] font-bold text-[#1a1206] transition hover:bg-ember-deep">
+              <button onClick={() => void startSession(settings?.defaultCli ?? 'shell')} className="mt-1 rounded-full bg-ember px-5 py-2.5 text-[13px] font-bold text-[#1a1206] transition hover:bg-ember-deep active:scale-[0.98]">
                 Start {settings?.defaultCli ?? 'shell'} session
               </button>
             </div>
@@ -225,6 +303,7 @@ export default function Shell(): React.JSX.Element {
               <TerminalView session={s} visible={s.id === activeSessionId} />
             </div>
           ))}
+          </div>
         </main>
 
         {/* Right panel */}
@@ -238,6 +317,11 @@ export default function Shell(): React.JSX.Element {
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition ${rightTab === id ? 'bg-panel3 text-paper' : 'text-fog hover:text-mist'}`}
                 >
                   <Icon size={13} className={rightTab === id ? 'text-ember' : ''} /> {label}
+                  {id === 'mail' && unreadMail > 0 && (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-ember px-1 text-[9.5px] font-black text-[#1a1206]">
+                      {unreadMail}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
